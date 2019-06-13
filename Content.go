@@ -2,6 +2,7 @@ package confluence
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/google/go-querystring/query"
@@ -26,6 +27,57 @@ func (client Client) GetContent(qp *GetContentQueryParameters) ([]Content, error
 		log.Error("Unable to unmarshal ContentResponse. Received: '", string(body), "'")
 	}
 	return contentResponse.Results, err
+}
+
+// GetLabelQueryParameters query parameters for GetLabels
+type GetLabelsQueryParameters struct {
+	Prefix string `url:"prefix,omitempty"`
+	Start  int    `url:"start,omitempty"`
+	Limit  int    `url:"limit,omitempty"`
+}
+
+func (client Client) GetLabels(id string, qp *GetLabelsQueryParameters) ([]Label, error) {
+	v, _ := query.Values(qp)
+	queryParams := v.Encode()
+	body, err := client.request("GET", fmt.Sprintf("/rest/api/content/%s/label", id), queryParams, "")
+
+	if err != nil {
+		return nil, err
+	}
+	var labelResponse LabelResponse
+	err = json.Unmarshal(body, &labelResponse)
+	if err != nil {
+		log.Error("Unable to unmarshal LabelResponse. Received: '", string(body), "'")
+	}
+	return labelResponse.Results, err
+}
+
+// CreateContent creates a new piece of content or publishes an existing draft.
+// https://developer.atlassian.com/cloud/confluence/rest/#api-content-post
+func (client Client) CreateLabel(id string, bp *CreateLabelBodyParameters, qp *QueryParameters) (Label, error) {
+	var res Label
+	var queryParams string
+	if qp != nil {
+		v, _ := query.Values(qp)
+		queryParams = v.Encode()
+	}
+
+	byteString, err := json.Marshal(bp)
+	if err != nil {
+		log.Error("Unable to marshal body. Received: '", err, "'")
+	}
+
+	body, err := client.request("POST", fmt.Sprintf("/rest/api/content/%s/label", id), queryParams, string(byteString))
+	if err != nil {
+		return res, err
+	}
+	err = json.Unmarshal(body, &res)
+	if err != nil {
+		log.Error(body)
+		log.Error(err)
+		log.Error("Unable to unmarshal CreateLabelResponse. Received: '", string(body), "'")
+	}
+	return res, err
 }
 
 // GetContentQueryParameters query parameters for GetContent
@@ -103,6 +155,14 @@ type CreateContentBodyParameters struct {
 	Content
 }
 
+type CreateLabelBodyParameters struct {
+	Label
+}
+
+type LabelResponse struct {
+	Results []Label `json:"results"`
+}
+
 // DeleteContent oves a piece of content to the space’s trash or purges it from the trash, depending on the content’s type and status:
 //  - If the content’s type is `page` or `blogpost` and its status is `current`, it will be trashed.
 //  - If the content’s type is `page` or `blogpost` and its status is `trashed`, the content will be purged from the trash and deleted permanently. Note, you must also set the `status` query parameter to `trashed` in your request.
@@ -150,4 +210,10 @@ type Content struct {
 		Editui string `json:"editui,omitempty"`
 		Webui  string `json:"webui,omitempty"`
 	} `json:"_links,omitempty"`
+}
+
+// Label represents the labels that can be attached to the content
+type Label struct {
+	Prefix string `json:"prefix,omitempty"`
+	Name   string `json:"name,omitempty"`
 }

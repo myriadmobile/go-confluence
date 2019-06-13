@@ -14,4 +14,4 @@
 .glide/
 
 # Project-local VS Code files
-.vscode/
+.vscode/*

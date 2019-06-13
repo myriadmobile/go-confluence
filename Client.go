@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Client for the Confluence API
